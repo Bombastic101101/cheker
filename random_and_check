@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ethereum Random Private Key Balance Checker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.6.1/web3.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        button {
+            margin-top: 10px;
+        }
+        .result {
+            margin-top: 10px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Generate Random Ethereum Private Keys and Check Balances</h1>
+    <button id="generateKeys">Generate 100 Random Private Keys</button>
+    <div id="balanceResults" class="result"></div>
+
+    <script>
+        const infuraProjectId = 'eb443ee47ffa425bb944f0c5a1b70329'; // Your Infura Project ID
+        const web3 = new Web3(`https://mainnet.infura.io/v3/${infuraProjectId}`);
+
+        document.getElementById('generateKeys').addEventListener('click', async function() {
+            const balanceResults = document.getElementById('balanceResults');
+            balanceResults.innerHTML = ''; // Clear previous results
+
+            for (let i = 0; i < 100; i++) {
+                // Generate a random private key
+                const privateKey = web3.utils.randomHex(32); // 32 bytes = 256 bits
+
+                try {
+                    // Derive the public address from the private key
+                    const account = web3.eth.accounts.privateKeyToAccount(privateKey);
+                    const walletAddress = account.address;
+
+                    // Fetch the balance
+                    const balance = await web3.eth.getBalance(walletAddress);
+                    const balanceInEther = web3.utils.fromWei(balance, 'ether');
+
+                    // Display the results
+                    balanceResults.innerHTML += `<p>Private Key: ${privateKey} - Address: ${walletAddress} - Balance: ${balanceInEther} ETH</p>`;
+                } catch (error) {
+                    balanceResults.innerHTML += `<p>Error fetching balance for private key ${privateKey}: ${error.message}</p>`;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
