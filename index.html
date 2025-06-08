@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ethereum Wallet Balance Checker</title>
-    <!-- Include Web3.js from CDN -->
+    <title>Ethereum Random Private Key Balance Checker</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.6.1/web3.min.js"></script>
     <style>
         body {
@@ -23,31 +22,23 @@
     </style>
 </head>
 <body>
-    <h1>Check Ethereum Wallet Balances</h1>
-    <textarea id="privateKeys" rows="10" cols="50" placeholder="Enter Private Keys (one per line)"></textarea>
-    <button id="checkBalances">Check Balances</button>
+    <h1>Generate Random Ethereum Private Keys and Check Balances</h1>
+    <button id="generateKeys">Generate 100 Random Private Keys</button>
     <div id="balanceResults" class="result"></div>
 
     <script>
-        // Initialize Web3 with Infura
         const infuraProjectId = 'eb443ee47ffa425bb944f0c5a1b70329'; // Your Infura Project ID
         const web3 = new Web3(`https://mainnet.infura.io/v3/${infuraProjectId}`);
 
-        document.getElementById('checkBalances').addEventListener('click', async function() {
-            const privateKeysInput = document.getElementById('privateKeys').value;
+        document.getElementById('generateKeys').addEventListener('click', async function() {
             const balanceResults = document.getElementById('balanceResults');
             balanceResults.innerHTML = ''; // Clear previous results
 
-            const privateKeys = privateKeysInput.split('\n').map(key => key.trim()).filter(key => key);
+            for (let i = 0; i < 100; i++) {
+                // Generate a random private key
+                const privateKey = web3.utils.randomHex(32); // 32 bytes = 256 bits
 
-            for (const privateKey of privateKeys) {
                 try {
-                    // Ensure the private key is valid
-                    if (!web3.utils.isHexStrict(privateKey) || privateKey.length !== 66) {
-                        balanceResults.innerHTML += `<p>Invalid Private Key: ${privateKey}</p>`;
-                        continue;
-                    }
-
                     // Derive the public address from the private key
                     const account = web3.eth.accounts.privateKeyToAccount(privateKey);
                     const walletAddress = account.address;
@@ -57,7 +48,7 @@
                     const balanceInEther = web3.utils.fromWei(balance, 'ether');
 
                     // Display the results
-                    balanceResults.innerHTML += `<p>Address: ${walletAddress} - Balance: ${balanceInEther} ETH</p>`;
+                    balanceResults.innerHTML += `<p>Private Key: ${privateKey} - Address: ${walletAddress} - Balance: ${balanceInEther} ETH</p>`;
                 } catch (error) {
                     balanceResults.innerHTML += `<p>Error fetching balance for private key ${privateKey}: ${error.message}</p>`;
                 }
