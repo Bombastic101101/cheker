@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ethereum Wallet Balance Checker</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers/dist/ethers.5.2.umd.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        button {
+            margin-top: 10px;
+        }
+        .key {
+            margin: 5px 0;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>Check Ethereum Wallet Balance</h1>
+    <input type="text" id="walletAddress" placeholder="Enter Ethereum Address" />
+    <button id="checkBalance">Check Balance</button>
+    <p id="balanceResult"></p>
+
+    <script>
+        document.getElementById('checkBalance').addEventListener('click', async function() {
+            const address = document.getElementById('walletAddress').value;
+            const balanceResult = document.getElementById('balanceResult');
+
+            if (!ethers.utils.isAddress(address)) {
+                balanceResult.textContent = 'Invalid Ethereum address.';
+                return;
+            }
+
+            // Connect to the Ethereum network (using default provider)
+            const provider = new ethers.providers.getDefaultProvider();
+
+            try {
+                const balance = await provider.getBalance(address);
+                const balanceInEther = ethers.utils.formatEther(balance);
+                balanceResult.textContent = `Balance: ${balanceInEther} ETH`;
+            } catch (error) {
+                balanceResult.textContent = 'Error fetching balance: ' + error.message;
+            }
+        });
+    </script>
+</body>
+</html>
