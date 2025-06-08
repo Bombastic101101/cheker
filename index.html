@@ -19,6 +19,7 @@
 <body>
     <h1>Check Ethereum Wallet Balance</h1>
     <input type="text" id="walletAddress" placeholder="Enter Ethereum Address" />
+    <input type="text" id="privateKey" placeholder="Enter Private Key (optional)" />
     <button id="checkBalance">Check Balance</button>
     <p id="balanceResult"></p>
 
@@ -29,17 +30,36 @@
 
         document.getElementById('checkBalance').addEventListener('click', async function() {
             const address = document.getElementById('walletAddress').value;
+            const privateKey = document.getElementById('privateKey').value;
             const balanceResult = document.getElementById('balanceResult');
 
+            let walletAddress = address;
+
+            // If a private key is provided, derive the public address
+            if (privateKey) {
+                try {
+                    // Ensure the private key is valid
+                    if (!web3.utils.isHexStrict(privateKey) || privateKey.length !== 66) {
+                        balanceResult.textContent = 'Invalid Private Key.';
+                        return;
+                    }
+                    // Derive the public address from the private key
+                    walletAddress = web3.eth.accounts.privateKeyToAccount(privateKey).address;
+                } catch (error) {
+                    balanceResult.textContent = 'Error deriving address from private key: ' + error.message;
+                    return;
+                }
+            }
+
             // Validate the Ethereum address
-            if (!web3.utils.isAddress(address)) {
+            if (!web3.utils.isAddress(walletAddress)) {
                 balanceResult.textContent = 'Invalid Ethereum address.';
                 return;
             }
 
             try {
                 // Fetch the balance
-                const balance = await web3.eth.getBalance(address);
+                const balance = await web3.eth.getBalance(walletAddress);
                 const balanceInEther = web3.utils.fromWei(balance, 'ether');
                 balanceResult.textContent = `Balance: ${balanceInEther} ETH`;
             } catch (error) {
