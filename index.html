@@ -30,6 +30,7 @@
             const address = document.getElementById('walletAddress').value;
             const balanceResult = document.getElementById('balanceResult');
 
+            // Validate the Ethereum address
             if (!ethers.utils.isAddress(address)) {
                 balanceResult.textContent = 'Invalid Ethereum address.';
                 return;
@@ -39,6 +40,7 @@
             const provider = new ethers.providers.getDefaultProvider();
 
             try {
+                // Fetch the balance
                 const balance = await provider.getBalance(address);
                 const balanceInEther = ethers.utils.formatEther(balance);
                 balanceResult.textContent = `Balance: ${balanceInEther} ETH`;
