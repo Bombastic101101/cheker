@@ -14,56 +14,53 @@
         button {
             margin-top: 10px;
         }
+        .result {
+            margin-top: 10px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 5px;
+        }
     </style>
 </head>
 <body>
-    <h1>Check Ethereum Wallet Balance</h1>
-    <input type="text" id="walletAddress" placeholder="Enter Ethereum Address" />
-    <input type="text" id="privateKey" placeholder="Enter Private Key (optional)" />
-    <button id="checkBalance">Check Balance</button>
-    <p id="balanceResult"></p>
+    <h1>Check Ethereum Wallet Balances</h1>
+    <textarea id="privateKeys" rows="10" cols="50" placeholder="Enter Private Keys (one per line)"></textarea>
+    <button id="checkBalances">Check Balances</button>
+    <div id="balanceResults" class="result"></div>
 
     <script>
         // Initialize Web3 with Infura
         const infuraProjectId = 'eb443ee47ffa425bb944f0c5a1b70329'; // Your Infura Project ID
         const web3 = new Web3(`https://mainnet.infura.io/v3/${infuraProjectId}`);
 
-        document.getElementById('checkBalance').addEventListener('click', async function() {
-            const address = document.getElementById('walletAddress').value;
-            const privateKey = document.getElementById('privateKey').value;
-            const balanceResult = document.getElementById('balanceResult');
+        document.getElementById('checkBalances').addEventListener('click', async function() {
+            const privateKeysInput = document.getElementById('privateKeys').value;
+            const balanceResults = document.getElementById('balanceResults');
+            balanceResults.innerHTML = ''; // Clear previous results
 
-            let walletAddress = address;
+            const privateKeys = privateKeysInput.split('\n').map(key => key.trim()).filter(key => key);
 
-            // If a private key is provided, derive the public address
-            if (privateKey) {
+            for (const privateKey of privateKeys) {
                 try {
                     // Ensure the private key is valid
                     if (!web3.utils.isHexStrict(privateKey) || privateKey.length !== 66) {
-                        balanceResult.textContent = 'Invalid Private Key.';
-                        return;
+                        balanceResults.innerHTML += `<p>Invalid Private Key: ${privateKey}</p>`;
+                        continue;
                     }
+
                     // Derive the public address from the private key
-                    walletAddress = web3.eth.accounts.privateKeyToAccount(privateKey).address;
+                    const account = web3.eth.accounts.privateKeyToAccount(privateKey);
+                    const walletAddress = account.address;
+
+                    // Fetch the balance
+                    const balance = await web3.eth.getBalance(walletAddress);
+                    const balanceInEther = web3.utils.fromWei(balance, 'ether');
+
+                    // Display the results
+                    balanceResults.innerHTML += `<p>Address: ${walletAddress} - Balance: ${balanceInEther} ETH</p>`;
                 } catch (error) {
-                    balanceResult.textContent = 'Error deriving address from private key: ' + error.message;
-                    return;
+                    balanceResults.innerHTML += `<p>Error fetching balance for private key ${privateKey}: ${error.message}</p>`;
                 }
-            }
-
-            // Validate the Ethereum address
-            if (!web3.utils.isAddress(walletAddress)) {
-                balanceResult.textContent = 'Invalid Ethereum address.';
-                return;
-            }
-
-            try {
-                // Fetch the balance
-                const balance = await web3.eth.getBalance(walletAddress);
-                const balanceInEther = web3.utils.fromWei(balance, 'ether');
-                balanceResult.textContent = `Balance: ${balanceInEther} ETH`;
-            } catch (error) {
-                balanceResult.textContent = 'Error fetching balance: ' + error.message;
             }
         });
     </script>
