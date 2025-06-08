@@ -23,8 +23,9 @@
     <p id="balanceResult"></p>
 
     <script>
-        // Initialize Web3
-        const web3 = new Web3(Web3.givenProvider || "https://mainnet.infura.io/v3/YOUR_INFURA_PROJECT_ID");
+        // Initialize Web3 with Infura
+        const infuraProjectId = 'eb443ee47ffa425bb944f0c5a1b70329'; // Your Infura Project ID
+        const web3 = new Web3(`https://mainnet.infura.io/v3/${infuraProjectId}`);
 
         document.getElementById('checkBalance').addEventListener('click', async function() {
             const address = document.getElementById('walletAddress').value;
