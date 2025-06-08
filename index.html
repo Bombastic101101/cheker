@@ -1,59 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ethereum Random Private Key Balance Checker</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.6.1/web3.min.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
-        }
-        button {
-            margin-top: 10px;
-        }
-        .result {
-            margin-top: 10px;
-            border: 1px solid #ccc;
-            padding: 10px;
-            border-radius: 5px;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <title>ETH Wallet Generator & Balance Checker (Non-Zero Only)</title>
+  <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js" type="application/javascript"></script>
+  <style>
+    body { font-family: monospace; background: #111; color: #0f0; padding: 20px; }
+    button { padding: 10px 20px; font-size: 16px; margin-bottom: 20px; }
+    pre { white-space: pre-wrap; word-wrap: break-word; }
+  </style>
 </head>
 <body>
-    <h1>Generate Random Ethereum Private Keys and Check Balances</h1>
-    <button id="generateKeys">Generate 100 Random Private Keys</button>
-    <div id="balanceResults" class="result"></div>
+  <h1>🔐 ETH Wallet Generator (Filtered)</h1>
+  <button onclick="generateWallets()">Generate 100 Wallets</button>
+  <pre id="output">Click the button to begin. Only wallets with ETH or tokens will be shown.</pre>
 
-    <script>
-        const infuraProjectId = 'eb443ee47ffa425bb944f0c5a1b70329'; // Your Infura Project ID
-        const web3 = new Web3(`https://mainnet.infura.io/v3/${infuraProjectId}`);
+  <script>
+    const infuraKey = 'eb443ee47ffa425bb944f0c5a1b70329';
+    const etherscanApiKey = 'HHYFTRDWS7HYB1WRHTDP2V17UXDQSAWVXQ';
 
-        document.getElementById('generateKeys').addEventListener('click', async function() {
-            const balanceResults = document.getElementById('balanceResults');
-            balanceResults.innerHTML = ''; // Clear previous results
+    async function generateWallets() {
+      const provider = new ethers.providers.InfuraProvider('mainnet', infuraKey);
+      let outputText = '';
+      const wallets = [];
 
-            for (let i = 0; i < 100; i++) {
-                // Generate a random private key
-                const privateKey = web3.utils.randomHex(32); // 32 bytes = 256 bits
+      document.getElementById("output").textContent = "Generating and checking wallets...\n\n";
 
-                try {
-                    // Derive the public address from the private key
-                    const account = web3.eth.accounts.privateKeyToAccount(privateKey);
-                    const walletAddress = account.address;
+      for (let i = 0; i < 100; i++) {
+        wallets.push(ethers.Wallet.createRandom());
+      }
 
-                    // Fetch the balance
-                    const balance = await web3.eth.getBalance(walletAddress);
-                    const balanceInEther = web3.utils.fromWei(balance, 'ether');
+      for (let i = 0; i < wallets.length; i++) {
+        const wallet = wallets[i];
+        const address = wallet.address;
+        const privateKey = wallet.privateKey;
 
-                    // Display the results
-                    balanceResults.innerHTML += `<p>Private Key: ${privateKey} - Address: ${walletAddress} - Balance: ${balanceInEther} ETH</p>`;
-                } catch (error) {
-                    balanceResults.innerHTML += `<p>Error fetching balance for private key ${privateKey}: ${error.message}</p>`;
-                }
+        let showWallet = false;
+        let eth = '0.0';
+        let tokenOutput = '';
+
+        try {
+          // ETH Balance
+          const balance = await provider.getBalance(address);
+          eth = ethers.utils.formatEther(balance);
+          if (parseFloat(eth) > 0) {
+            showWallet = true;
+          }
+
+          // Token balances via Etherscan
+          const url = `https://api.etherscan.io/api?module=account&action=tokentx&address=${address}&startblock=0&endblock=99999999&sort=asc&apikey=${etherscanApiKey}`;
+          const res = await fetch(url);
+          const data = await res.json();
+
+          if (data.result && data.result.length > 0) {
+            const tokenSummary = {};
+            for (let tx of data.result) {
+              const symbol = tx.tokenSymbol;
+              const decimals = parseInt(tx.tokenDecimal);
+              const value = parseFloat(tx.value) / Math.pow(10, decimals);
+              if (!tokenSummary[symbol]) tokenSummary[symbol] = 0;
+              tokenSummary[symbol] += value;
             }
-        });
-    </script>
+            for (let [symbol, val] of Object.entries(tokenSummary)) {
+              if (val > 0) {
+                showWallet = true;
+                tokenOutput += `  - ${symbol}: ${val.toFixed(4)}\n`;
+              }
+            }
+          }
+        } catch (err) {
+          console.log(`Error checking wallet ${i + 1}: ${err.message}`);
+        }
+
+        // Display only non-zero wallets
+        if (showWallet) {
+          outputText += `#${i + 1}\n`;
+          outputText += `Address: ${address}\nPrivate Key: ${privateKey}\nETH Balance: ${eth} ETH\n`;
+          if (tokenOutput) outputText += `Tokens:\n${tokenOutput}`;
+          outputText += `----------------------\n`;
+          document.getElementById("output").textContent = outputText;
+        }
+      }
+
+      if (!outputText) {
+        document.getElementById("output").textContent = "✅ Checked 100 wallets — no non-zero balances found.";
+      }
+    }
+  </script>
 </body>
 </html>
+
