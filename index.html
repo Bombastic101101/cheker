@@ -1,92 +1,128 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>ETH Wallet Generator & Balance Checker (Non-Zero Only)</title>
-  <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js" type="application/javascript"></script>
-  <style>
-    body { font-family: monospace; background: #111; color: #0f0; padding: 20px; }
-    button { padding: 10px 20px; font-size: 16px; margin-bottom: 20px; }
-    pre { white-space: pre-wrap; word-wrap: break-word; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Private Key Balance Checker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.6.1/web3.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        button {
+            margin-top: 10px;
+        }
+        .result {
+            margin-top: 10px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
 </head>
 <body>
-  <h1>🔐 ETH Wallet Generator (Filtered)</h1>
-  <button onclick="generateWallets()">Generate 100 Wallets</button>
-  <pre id="output">Click the button to begin. Only wallets with ETH or tokens will be shown.</pre>
+    <h1>Generate Random Ethereum Private Keys and Check Balances</h1>
+    <button id="generateKeys">Generate 1000 Random Private Keys</button>
+    <div id="balanceResults" class="result"></div>
 
-  <script>
-    const infuraKey = 'eb443ee47ffa425bb944f0c5a1b70329';
-    const etherscanApiKey = 'HHYFTRDWS7HYB1WRHTDP2V17UXDQSAWVXQ';
+    <script>
+        const infuraProjectId = 'eb443ee47ffa425bb944f0c5a1b70329'; // Replace with your Infura Project ID
+        const web3 = new Web3(`https://mainnet.infura.io/v3/${infuraProjectId}`);
 
-    async function generateWallets() {
-      const provider = new ethers.providers.InfuraProvider('mainnet', infuraKey);
-      let outputText = '';
-      const wallets = [];
+        // Token contract addresses with correct checksum
+        const TOKEN_ADDRESSES = {
+            USDC: web3.utils.toChecksumAddress('0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'), // USDC
+            USDT: web3.utils.toChecksumAddress('0xdac17f958d2ee523a2206206994597c13d831ec7'), // USDT
+            DAI: web3.utils.toChecksumAddress('0x6B175474E89094C44Da98b954EedeAC495271d0F') // DAI
+        };
 
-      document.getElementById("output").textContent = "Generating and checking wallets...\n\n";
+        document.getElementById('generateKeys').addEventListener('click', async () => {
+            const balanceResults = document.getElementById('balanceResults');
+            balanceResults.innerHTML = ''; // Clear previous results
 
-      for (let i = 0; i < 100; i++) {
-        wallets.push(ethers.Wallet.createRandom());
-      }
+            for (let i = 0; i < 1000; i++) {
+                // Generate a random private key
+                const privateKey = web3.utils.randomHex(32); // 32 bytes = 256 bits
 
-      for (let i = 0; i < wallets.length; i++) {
-        const wallet = wallets[i];
-        const address = wallet.address;
-        const privateKey = wallet.privateKey;
+                try {
+                    // Derive the public address from the private key
+                    const account = web3.eth.accounts.privateKeyToAccount(privateKey);
+                    const walletAddress = account.address;
 
-        let showWallet = false;
-        let eth = '0.0';
-        let tokenOutput = '';
+                    // Fetch the Ethereum balance
+                    const ethBalance = await web3.eth.getBalance(walletAddress);
+                    const ethBalanceInEther = web3.utils.fromWei(ethBalance, 'ether');
 
-        try {
-          // ETH Balance
-          const balance = await provider.getBalance(address);
-          eth = ethers.utils.formatEther(balance);
-          if (parseFloat(eth) > 0) {
-            showWallet = true;
-          }
+                    // Fetch balances for other tokens
+                    const usdcBalance = await getTokenBalance(walletAddress, TOKEN_ADDRESSES.USDC);
+                    const usdtBalance = await getTokenBalance(walletAddress, TOKEN_ADDRESSES.USDT);
+                    const daiBalance = await getTokenBalance(walletAddress, TOKEN_ADDRESSES.DAI);
+                    const bnbBalance = await getBnbBalance(walletAddress); // Placeholder for BNB
+                    const ltcBalance = '0'; // Placeholder for LTC, as it's not an ERC20 token
 
-          // Token balances via Etherscan
-          const url = `https://api.etherscan.io/api?module=account&action=tokentx&address=${address}&startblock=0&endblock=99999999&sort=asc&apikey=${etherscanApiKey}`;
-          const res = await fetch(url);
-          const data = await res.json();
+                    // Check for non-zero balances and notify
+                    if (parseFloat(ethBalanceInEther) > 0) {
+                        alert(`Non-zero ETH balance detected: ${ethBalanceInEther} ETH at address ${walletAddress}`);
+                    }
+                    if (parseFloat(usdcBalance) > 0) {
+                        alert(`Non-zero USDC balance detected: ${usdcBalance} USDC at address ${walletAddress}`);
+                    }
+                    if (parseFloat(usdtBalance) > 0) {
+                        alert(`Non-zero USDT balance detected: ${usdtBalance} USDT at address ${walletAddress}`);
+                    }
+                    if (parseFloat(bnbBalance) > 0) {
+                        alert(`Non-zero BNB balance detected: ${bnbBalance} BNB at address ${walletAddress}`);
+                    }
+                    if (parseFloat(daiBalance) > 0) {
+                        alert(`Non-zero DAI balance detected: ${daiBalance} DAI at address ${walletAddress}`);
+                    }
 
-          if (data.result && data.result.length > 0) {
-            const tokenSummary = {};
-            for (let tx of data.result) {
-              const symbol = tx.tokenSymbol;
-              const decimals = parseInt(tx.tokenDecimal);
-              const value = parseFloat(tx.value) / Math.pow(10, decimals);
-              if (!tokenSummary[symbol]) tokenSummary[symbol] = 0;
-              tokenSummary[symbol] += value;
+                    // Display the results
+                    balanceResults.innerHTML += `
+                        <p>Private Key: ${privateKey} - Address: ${walletAddress} - ETH Balance: ${ethBalanceInEther} ETH</p>
+                        <p>USDC Balance: ${usdcBalance} USDC</p>
+                        <p>USDT Balance: ${usdtBalance} USDT</p>
+                        <p>BNB Balance: ${bnbBalance} BNB</p>
+                        <p>LTC Balance: ${ltcBalance} LTC</p>
+                        <p>DAI Balance: ${daiBalance} DAI</p>
+                        <hr>
+                    `;
+                } catch (error) {
+                    balanceResults.innerHTML += `<p>Error fetching balance for private key ${privateKey}: ${error.message}</p>`;
+                }
             }
-            for (let [symbol, val] of Object.entries(tokenSummary)) {
-              if (val > 0) {
-                showWallet = true;
-                tokenOutput += `  - ${symbol}: ${val.toFixed(4)}\n`;
-              }
+        });
+
+        async function getTokenBalance(address, tokenAddress) {
+            const minABI = [
+                {
+                    "constant": true,
+                    "inputs": [{"name": "_owner", "type": "address"}],
+                    "name": "balanceOf",
+                    "outputs": [{"name": "balance", "type": "uint256"}],
+                    "payable": false,
+                    "stateMutability": "view",
+                    "type": "function"
+                }
+            ];
+
+            const contract = new web3.eth.Contract(minABI, tokenAddress);
+
+            try {
+                const balance = await contract.methods.balanceOf(address).call();
+                return web3.utils.fromWei(balance, 'ether');
+            } catch (error) {
+                return '0';
             }
-          }
-        } catch (err) {
-          console.log(`Error checking wallet ${i + 1}: ${err.message}`);
         }
 
-        // Display only non-zero wallets
-        if (showWallet) {
-          outputText += `#${i + 1}\n`;
-          outputText += `Address: ${address}\nPrivate Key: ${privateKey}\nETH Balance: ${eth} ETH\n`;
-          if (tokenOutput) outputText += `Tokens:\n${tokenOutput}`;
-          outputText += `----------------------\n`;
-          document.getElementById("output").textContent = outputText;
+        async function getBnbBalance(address) {
+            // Placeholder for BNB balance check, as BNB is not an ERC20 token
+            return '0'; // Replace with actual BNB balance fetching logic if needed
         }
-      }
-
-      if (!outputText) {
-        document.getElementById("output").textContent = "✅ Checked 100 wallets — no non-zero balances found.";
-      }
-    }
-  </script>
+    </script>
 </body>
 </html>
+
 
